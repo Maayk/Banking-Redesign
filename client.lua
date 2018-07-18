@@ -1,13 +1,3 @@
--- ###################################
---
---       Credits: DevSun convert to VRPEX
---       Credits: Kanersps < Edit script gui menu
---       Credits: GBJoel < creator script
--- My email sun@blackbox.ac
--- my group fivem server https://www.facebook.com/groups/1489038398088259/
--- ###################################
-
-
 -- Settings
 local depositAtATM = false -- Allows the player to deposit at an ATM rather than only in banks (Default: false)
 local giveCashAnywhere = false -- Allows the player to give CASH to another player, no matter how far away they are. (Default: false)
@@ -58,6 +48,7 @@ local atms = {
   {name="ATM", id=277, x=-3044.22, y=595.2429, z=7.595},
   {name="ATM", id=277, x=-3144.13, y=1127.415, z=20.868},
   {name="ATM", id=277, x=-3241.10, y=996.6881, z=12.500},
+  {name="ATM", id=277, x=437.21136474609, y=-996.29119873047, z=30.689582824707},
   {name="ATM", id=277, x=-3241.11, y=1009.152, z=12.877},
   {name="ATM", id=277, x=-1305.40, y=-706.240, z=25.352},
   {name="ATM", id=277, x=-538.225, y=-854.423, z=29.234},
@@ -96,38 +87,25 @@ local atms = {
 
 -- Banks
 local banks = {
-  {name="Bank", id=108, x=150.266, y=-1040.203, z=29.374},
-  {name="Bank", id=108, x=-1212.980, y=-330.841, z=37.787},
-  {name="Bank", id=108, x=-2962.582, y=482.627, z=15.703},
-  {name="Bank", id=108, x=-112.202, y=6469.295, z=31.626},
-  {name="Bank", id=108, x=314.187, y=-278.621, z=54.170},
-  {name="Bank", id=108, x=-351.534, y=-49.529, z=49.042},
-  {name="Bank", id=108, x=241.727, y=220.706, z=106.286},
+  {name="Banco do Brasil", id=108, x=150.266, y=-1040.203, z=29.374},
+  {name="Banco do Brasil", id=108, x=-1212.980, y=-330.841, z=37.787},
+  {name="Banco do Brasil", id=108, x=-2962.582, y=482.627, z=15.703},
+  {name="Banco do Brasil", id=108, x=-112.202, y=6469.295, z=31.626},
+  {name="Banco do Brasil", id=108, x=314.187, y=-278.621, z=54.170},
+  {name="Banco do Brasil", id=108, x=-351.534, y=-49.529, z=49.042},
+  {name="Banco do Brasil", id=108, x=241.727, y=220.706, z=106.286},
 }
 
 -- Display Map Blips
 Citizen.CreateThread(function()
-  if displayBankBlips then
-    for k,v in ipairs(banks)do
-      local blip = AddBlipForCoord(v.x, v.y, v.z)
-      SetBlipSprite(blip, v.id)
-      SetBlipScale(blip, 0.8)
-      SetBlipAsShortRange(blip, true)
-      BeginTextCommandSetBlipName("STRING");
-      AddTextComponentString(tostring(v.name))
-      EndTextCommandSetBlipName(blip)
-    end
-  end
-  if displayAtmBlips then
-    for k,v in ipairs(atms)do
-      local blip = AddBlipForCoord(v.x, v.y, v.z)
-      SetBlipSprite(blip, v.id)
-      SetBlipScale(blip, 0.8)
-      SetBlipAsShortRange(blip, true)
-      BeginTextCommandSetBlipName("STRING");
-      AddTextComponentString(tostring(v.name))
-      EndTextCommandSetBlipName(blip)
-    end
+  for k,v in ipairs(banks)do
+    local blip = AddBlipForCoord(v.x, v.y, v.z)
+    SetBlipSprite(blip, 108)
+    SetBlipScale(blip, 1.0)
+    SetBlipAsShortRange(blip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentSubstringPlayerName("Bank")
+    EndTextCommandSetBlipName(blip)
   end
 end)
 
@@ -158,18 +136,17 @@ if enableBankingGui then
       Citizen.Wait(0)
       if(IsNearBank() or IsNearATM()) then
         if (atBank == false) then
-          TriggerEvent('chatMessage', "", {255, 255, 255}, "Press ^5E^0 to access bank");
+          TriggerEvent('chatMessage', "", {255, 255, 255}, "Pressione 'E' para acessar o banco");
         end
         atBank = true
         if IsControlJustPressed(1, 51)  then -- IF INPUT_PICKUP Is pressed
           if (IsInVehicle()) then
-            TriggerEvent('chatMessage', "", {255, 0, 0}, "^1You cannot use the bank in a vehicle!");
+            TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Você não pode usar o banco em um veículo!");
           else
             if bankOpen then
               closeGui()
               bankOpen = false
             else
-              TriggerServerEvent("bank:update")
               openGui()
               bankOpen = true
             end
@@ -246,7 +223,7 @@ RegisterNUICallback('depositSubmit', function(data, cb)
 end)
 
 RegisterNUICallback('transferSubmit', function(data, cb)
-  local fromPlayer = GetPlayerServerId(PlayerId());
+  local fromPlayer = GetPlayerServerId();
   TriggerEvent('bank:transfer', tonumber(fromPlayer), tonumber(data.toPlayer), tonumber(data.amount))
   cb('ok')
 end)
@@ -302,13 +279,12 @@ RegisterNetEvent('bank:deposit')
 AddEventHandler('bank:deposit', function(amount)
   if(IsNearBank() == true or depositAtATM == true and IsNearATM() == true or depositAnywhere == true ) then
     if (IsInVehicle()) then
-      TriggerEvent('chatMessage', "", {0, 255, 0}, "^1You cannot use the atm in a vehicle!");
+      TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Você não pode usar o atm em um veículo!");
     else
       TriggerServerEvent("bank:deposit", tonumber(amount))
-      TriggerEvent('chatMessage', "BANK", {0, 200, 0}, "^0You deposited ^5$"..amount);
     end
   else
-    TriggerEvent('chatMessage', "", {0, 255, 0}, "^1You can only deposit at a bank!");
+    TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Você só pode depositar em um banco!");
   end
 end)
 
@@ -317,13 +293,12 @@ RegisterNetEvent('bank:withdraw')
 AddEventHandler('bank:withdraw', function(amount)
   if(IsNearATM() == true or IsNearBank() == true or withdrawAnywhere == true) then
     if (IsInVehicle()) then
-      TriggerEvent('chatMessage', "", {0, 255, 0}, "^1You cannot use the bank in a vehicle!");
+      TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Você não pode usar o banco em um veículo!");
     else
       TriggerServerEvent("bank:withdraw", tonumber(amount))
-      TriggerEvent('chatMessage', "BANK", {0, 200, 0}, "^0You've withdrawn ^5$"..amount);
     end
   else
-    TriggerEvent('chatMessage', "", {0, 255, 0}, "^1This is not a bank or an ATM!");
+    TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Este não é um banco ou um caixa eletrônico!");
   end
 end)
 
@@ -336,10 +311,10 @@ AddEventHandler('bank:givecash', function(toPlayer, amount)
     if (playing ~= false) then
       TriggerServerEvent("bank:givecash", toPlayer, tonumber(amount))
     else
-      TriggerEvent('chatMessage', "", {0, 255, 0}, "^1This player is not online!");
+      TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Este jogador não está online!");
     end
   else
-    TriggerEvent('chatMessage', "", {0, 255, 0}, "^1You are not near this player!");
+    TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Você não está perto deste jogador!");
   end
 end)
 
@@ -351,7 +326,7 @@ AddEventHandler('bank:transfer', function(fromPlayer, toPlayer, amount)
   if (playing ~= false) then
     TriggerServerEvent("bank:transfer", fromPlayer, toPlayer, tonumber(amount))
   else
-    TriggerEvent('chatMessage', "", {0, 255, 0}, "^1This player is not online!");
+    TriggerEvent('chatMessage', "", {255, 0, 0}, "^1Este jogador não está online!");
   end
 end)
 

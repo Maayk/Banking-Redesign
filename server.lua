@@ -1,71 +1,64 @@
--- ###################################
---
---       Credits: DevSun convert to VRPEX
---       Credits: Kanersps < Edit script gui menu
---       Credits: GBJoel < creator script
--- My email sun@blackbox.ac
--- my group fivem server https://www.facebook.com/groups/1489038398088259/
--- ###################################
-
-
 local Tunnel = module("vrp", "lib/Tunnel")
 local Proxy = module("vrp", "lib/Proxy")
 
 vRP = Proxy.getInterface("vRP")
-vRPclient = Tunnel.getInterface("vRP","vrpex_banking")
+vRPclient = Tunnel.getInterface("vRP","vRP_banking")
 isTransfer = false
 
+local balances = {}
+AddEventHandler("vRP:playerSpawn",function(user_id,source,last_login) 
+    local player = vRP.getUserSource({user_id})
+    local bmoney = vRP.getBankMoney({user_id})
 
-AddEventHandler("vRPcli:playerSpawned",function(user_id,source) 
-    local bankbalance = vRP.getBankMoney(user_id)
-    TriggerClientEvent('banking:updateBalance', source, bankbalance)
+    balances[source] = bmoney
+    TriggerClientEvent('banking:updateBalance', player, bmoney)
 end)
 
 RegisterServerEvent('playerSpawned')
 AddEventHandler('playerSpawned', function()
-  local user_id = vRP.getUserId(source)
-  local bankbalance = vRP.getBankMoney(user_id)
+  local user_id = vRP.getUserId({source})
+  local player = vRP.getUserSource({user_id})
 
-  TriggerClientEvent('banking:updateBalance', source, bankbalance)
+  balances[player] = vRP.getBankMoney({user_id})
+  local bmoney = vRP.getBankMoney({user_id})
+
+  TriggerClientEvent('banking:updateBalance', player, bmoney)
+end)
+
+AddEventHandler('playerDropped', function()
+  balances[source] = nil
 end)
 
 -- HELPER FUNCTIONS
-function bankBalance(player)
-  return vRP.getBankMoney(vRP.getUserId(player))
-end
-
-function deposit(player, amount)
-  local bankbalance = bankBalance(player)
+function deposit(player, amount, user_id, bankbalance)
+  local p = vRP.getUserSource({user_id})
   local new_balance = bankbalance + math.abs(amount)
 
-  local user_id = vRP.getUserId(player)
-  TriggerClientEvent("banking:updateBalance", source, new_balance)
-  vRP.tryDeposit(user_id,math.floor(math.abs(amount)))
+  balances[p] = new_balance
+
+  if(isTransfer) then
+    vRP.setBankMoney({user_id, math.floor(new_balance)})
+  else
+    vRP.tryDeposit({user_id,math.floor(math.abs(amount))})
+  end
+
+  TriggerClientEvent("banking:updateBalance", p, new_balance)
+  
 end
 
-function withdraw(player, amount)
-  local bankbalance = bankBalance(player)
+function withdraw(player, amount, user_id, bankbalance)
+  local p = vRP.getUserSource({user_id})
   local new_balance = bankbalance - math.abs(amount)
 
-  local user_id = vRP.getUserId(player)
-  TriggerClientEvent("banking:updateBalance", source, new_balance)
-  vRP.tryWithdraw(user_id,math.floor(math.abs(amount)))
-end
+  balances[p] = new_balance
 
-function transfer (fPlayer, tPlayer, amount)
-  local bankbalance = bankBalance(fPlayer)
-  local bankbalance2 = bankBalance(tPlayer)
-  local new_balance = bankbalance - math.abs(amount)
-  local new_balance2 = bankbalance2 + math.abs(amount)
+  if(isTransfer) then
+    vRP.setBankMoney({user_id, math.floor(new_balance)})
+  else
+    vRP.tryWithdraw({user_id,math.floor(math.abs(amount))})
+  end
 
-  local user_id = vRP.getUserId(fPlayer)
-  local user_id2 = vRP.getUserId(tPlayer)
-
-  vRP.setBankMoney(user_id, new_balance)
-  vRP.setBankMoney(user_id2, new_balance2)
-
-  TriggerClientEvent("banking:updateBalance", fPlayer, new_balance)
-  TriggerClientEvent("banking:updateBalance", tPlayer, new_balance2)
+  TriggerClientEvent("banking:updateBalance", p, new_balance)
 end
 
 function round(num, numDecimalPlaces)
@@ -73,87 +66,26 @@ function round(num, numDecimalPlaces)
   return math.floor(num * mult + 0.5) / mult
 end
 
-function splitString(str, sep)
-  if sep == nil then sep = "%s" end
-
-  local t={}
-  local i=1
-
-  for str in string.gmatch(str, "([^"..sep.."]+)") do
-    t[i] = str
-    i = i + 1
-  end
-
-  return t
-end
-
-AddEventHandler("chatMessage", function(s, n, m)
-  local message = string.lower(m)
-  local user_id = vRP.getUserId({s})
-  local source = vRP.getUserSource(user_id)
-  local bankbalance = vRP.getBankMoney(user_id)
-
-  command = splitString(message)
-
-  if command[1] == "/checkbalance" then
-    TriggerClientEvent("chatMessage", s, "BANK", {0, 200, 0}, "Your current account balance: ^3$" .. bankbalance)
-    TriggerClientEvent("banking:updateBalance", source, bankbalance)
-    CancelEvent()
-  end
-
-  if command[1] == "/deposit" then
-    local amount = tonumber(command[2])
-    TriggerClientEvent('bank:deposit', s, amount)
-    CancelEvent()
-  end
-
-  if command[1] == "/withdraw" then
-    local amount = tonumber(command[2])
-    TriggerClientEvent('bank:withdraw', s, amount)
-    CancelEvent()
-  end
-
-  if command[1] == "/transfer" then
-    if(command[2] ~= nil and tonumber(command[3]) > 0) then
-      local fromPlayer = tonumber(s)
-      local toPlayer = tonumber(command[2])
-      local amount = tonumber(command[3])
-      TriggerClientEvent('bank:transfer', s, fromPlayer, toPlayer, amount)
-    else
-      TriggerClientEvent('chatMessage', s, "BANK", {0, 200, 0}, "^1Use format /transfer [id] [amount]^0")
-    end
-    CancelEvent()
-  end
-end)
-
-RegisterServerEvent('bank:update')
-AddEventHandler('bank:update', function()
-  local user_id = vRP.getUserId(source)
-  local source = vRP.getUserSource(user_id)
-  local bankbalance = vRP.getBankMoney(user_id)
-  TriggerClientEvent("banking:updateBalance", source, bankbalance)
-end)
-
 -- Bank Deposit
 RegisterServerEvent('bank:deposit')
 AddEventHandler('bank:deposit', function(amount)
   if not amount then return end
-    local user_id = vRP.getUserId(source)
-    local source = vRP.getUserSource(user_id)
-    local wallet = vRP.getMoney(user_id)
+    local user_id = vRP.getUserId({source})
+    local player = vRP.getUserSource({user_id})
+    local wallet = vRP.getMoney({user_id})
+    local bankbalance = vRP.getBankMoney({user_id})
     local rounded = math.ceil(tonumber(amount))
 
     if(string.len(rounded) >= 9) then
-      vRPclient.notify(user_id,"~r~Input too high.")
+      vRPclient.notify(player,{"~r~Entrada muito alta."})
     else
-      local bankbalance = vRP.getBankMoney(user_id)
       if(rounded <= wallet) then
-        TriggerClientEvent("banking:updateBalance", source, (bankbalance + rounded))
-        TriggerClientEvent("banking:addBalance", source, rounded)
+        TriggerClientEvent("banking:updateBalance", player, (bankbalance + rounded))
+        TriggerClientEvent("banking:addBalance", player, rounded)
 
-        deposit(source, rounded)
+        deposit(player, rounded, user_id, bankbalance)
       else
-        vRPclient.notify(user_id,"~r~Not enough cash!")
+        vRPclient.notify(player,{"~r~O dinheiro não é suficiente!"})
       end
     end
 end)
@@ -162,58 +94,59 @@ end)
 RegisterServerEvent('bank:withdraw')
 AddEventHandler('bank:withdraw', function(amount)
   if not amount then return end
-    local user_id = vRP.getUserId(source)
-    local source = vRP.getUserSource(user_id)
+    local user_id = vRP.getUserId({source})
+    local player = vRP.getUserSource({user_id})
     local rounded = round(tonumber(amount), 0)
     if(string.len(rounded) >= 9) then
-      vRPclient.notify(user_id,"~r~Input too high.")
+      vRPclient.notify(player,{"~r~Entrada muito alta."})
     else
-      local bankbalance = vRP.getBankMoney(user_id)
+      local bankbalance = vRP.getBankMoney({user_id})
       if(tonumber(rounded) <= tonumber(bankbalance)) then
-        TriggerClientEvent("banking:updateBalance", source, (vRP.getBankMoney(user_id) - rounded))
-        TriggerClientEvent("banking:removeBalance", source, rounded)
+        TriggerClientEvent("banking:updateBalance", player, (bankbalance - rounded))
+        TriggerClientEvent("banking:removeBalance", player, rounded)
 
-        withdraw(source, rounded)
+        withdraw(player, rounded, user_id, bankbalance)
       else
-        vRPclient.notify(user_id, "~r~Not enough money in account!")
+        vRPclient.notify(player, {"~r~Não há dinheiro suficiente em conta!"})
       end
     end
 end)
 
 RegisterServerEvent('bank:transfer')
 AddEventHandler('bank:transfer', function(fromPlayer, toPlayer, amount)
-  local user_id = vRP.getUserId(source)
-  local fPlayer = vRP.getUserSource(user_id)
+  local user_id = vRP.getUserId({fromPlayer})
+  local player = vRP.getUserSource({user_id})
 
-  if tonumber(fPlayer) == tonumber(toPlayer) then
-    TriggerClientEvent('chatMessage', fPlayer, "", {0, 255, 0}, "^1Cannot transfer to self")
+  if tonumber(fromPlayer) == tonumber(toPlayer) then
+    vRPclient.notify(player, {"~r~Não pode transferir para si mesmo."})
     CancelEvent()
-  else
+  else    
     local rounded = round(tonumber(amount), 0)
     if(string.len(rounded) >= 9) then
-      TriggerClientEvent('chatMessage', fPlayer, "", {0, 255, 0}, "^1Input too high!")
+      vRPclient.notify(player,{"~r~Entrada muito alta."})
       CancelEvent()
     else
-      local bankbalance = vRP.getBankMoney(user_id)
+      local bankbalance = vRP.getBankMoney({user_id})
       if(tonumber(rounded) <= tonumber(bankbalance)) then
-        TriggerClientEvent("banking:updateBalance", fPlayer, (bankbalance - rounded))
-        TriggerClientEvent("banking:removeBalance", fPlayer, rounded)
-        local user_id2 = vRP.getUserId(toPlayer)
-        local bankbalance2 = vRP.getBankMoney(user_id2)
-        
-        transfer(fPlayer, toPlayer, rounded)
-        
-        TriggerClientEvent('chatMessage', fPlayer, "", {0, 255, 0}, "^0Transferred: ^1$"..math.floor(rounded))
-        TriggerClientEvent('chatMessage', fPlayer, "", {0, 255, 0}, "^0New Balance: ^4$" .. math.floor((bankbalance - rounded)))
-        
-        TriggerClientEvent("banking:updateBalance", toPlayer, (bankbalance2 + rounded))
-        TriggerClientEvent("banking:addBalance", toPlayer, rounded)
-        
-        TriggerClientEvent('chatMessage', toPlayer, "", {0, 255, 0}, "^0Received: ^2$"..math.floor(rounded))
-        TriggerClientEvent('chatMessage', toPlayer, "", {0, 255, 0}, "^0New Balance: ^4$" .. math.floor((bankbalance2 + rounded)))
-        CancelEvent()
+        isTransfer = true
+        TriggerClientEvent("banking:updateBalance", player, (bankbalance - rounded))
+        TriggerClientEvent("banking:removeBalance", player, rounded)
+
+        withdraw(player, rounded, user_id, bankbalance)
+        vRPclient.notify(player,{"Transferido: ~r~-$".. rounded .." ~n~~s~Novo balanço: ~g~$" .. (bankbalance - rounded)})
+
+        local user_id2 = vRP.getUserId({toPlayer})
+        local player2 = vRP.getUserSource({user_id2})
+        local bankbalance2 = vRP.getBankMoney({user_id2})
+        TriggerClientEvent("banking:updateBalance", player2, (bankbalance2 + rounded))
+        TriggerClientEvent("banking:addBalance", player2, rounded)
+
+        deposit(player2, rounded, user_id2, bankbalance2)
+        vRPclient.notify(player2, {"~r~Não há dinheiro suficiente em conta!"})
+        isTransfer = false
+        CancelEvent()          
       else
-        TriggerClientEvent('chatMessage', fPlayer, "", {0, 255, 0}, "^1Not enough money in account!")
+        vRPclient.notify(player, {"~r~Não há dinheiro suficiente em conta!"})
       end
     end    
   end
