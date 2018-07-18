@@ -17,7 +17,7 @@ function addCommas(nStr) {
   var x2 = x.length > 1 ? '.' + x[1] : '';
   var rgx = /(\d+)(\d{3})/;
   while (rgx.test(x1)) {
-    x1 = x1.replace(rgx, '$1' + ',<span style="margin-left: 0px; margin-right: 1px;"/>' + '$2');
+    x1 = x1.replace(rgx, '$1' + '.<span style="margin-left: 0px; margin-right: 1px;"/>' + '$2');
   }
   return x1 + x2;
 }
@@ -59,7 +59,7 @@ $(document).ready(function(){
     var item = event.data;
     // Update HUD Balance
     if(item.updateBalance == true) {
-      $('.currentBalance').html('$'+addCommas(event.data.balance));
+      $('.currentBalance').html(' '+addCommas(event.data.balance));
       $('.username').html(event.data.player);
     }
     // Trigger Add Balance Popup
