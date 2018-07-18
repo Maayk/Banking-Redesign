@@ -6,8 +6,4 @@ banking vrp to vrpex
 * Imagicat creator VRP
 * Kanersps < Edit script gui menu
 * GBJoel < creator script
-
-**My contacts:**
-* My email : sun@blackbox.ac
-*  my group fivem server https://www.facebook.com/groups/1489038398088259/
-
+* Mayk < New nui
