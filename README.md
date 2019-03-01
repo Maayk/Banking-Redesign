@@ -1,6 +1,5 @@
 # banking
 banking vrp to vrpex
-# Modified script by 2kill-Sun
 
 **Credits:**
 * Imagicat creator VRP
